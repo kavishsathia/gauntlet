@@ -63,3 +63,125 @@ This solves the problem of how the mocking agent maintains a coherent world mode
 This is the more interesting part of this project. It solves the question of what hypothesis to even test. If we had no long term memory, then the mocking agent would be testing for prompt injection every single time. So we need to balance between exploration (finding new novel bugs), and exploitation (being able to ground the new ideas in reality and implementation).
 
 We have 3 parts to the LTM circuit: the existing bugs, the function implementations and the past query results. When producing a hypothesis, a separate `COMPLETION` call is made to generate a novel hypothesis all while being grounded in the code. This part of the system has the most potential but this implementation goes nowhere close to fulfilling that, so this will be my focus going forward.
+
+## Setup
+
+### Prerequisites
+
+- Python 3.10+
+- An Elasticsearch deployment with Agent Builder enabled
+- An OpenAI API key (used by inference endpoints)
+
+### 1. Install the package
+
+```bash
+pip install -e .
+```
+
+### 2. Set environment variables
+
+```bash
+export ELASTICSEARCH_URL="https://your-deployment.es.cloud.elastic.co:443"
+export KIBANA_URL="https://your-deployment.kb.cloud.elastic.co"
+export API_KEY="your-elasticsearch-api-key"
+export OPENAI_API_KEY="sk-..."
+
+# Optional (defaults shown)
+export INFERENCE_ID="my_inference_endpoint"
+export EMBEDDING_INFERENCE_ID="my_embedding_endpoint"
+export GAUNTLET_MODE="ON"
+```
+
+Or create a `.env` file in your project root with the same variables.
+
+### 3. Initialize
+
+```python
+from gauntlet import Gauntlet
+
+gauntlet = Gauntlet()
+gauntlet.init()
+```
+
+`gauntlet.init()` will:
+- Register inference endpoints (completion + embedding) in Elasticsearch
+- Create all required indices (`gauntlet-stm`, `gauntlet-ltm-bugs`, `gauntlet-ltm-func`, `gauntlet-ltm-queries`)
+- Create ES|QL tools and the store-bug Kibana workflow
+- Create the mocking agent in Agent Builder
+- Import a Kibana dashboard for viewing discovered bugs
+
+### 4. Decorate your tools and run
+
+```python
+from agents import Agent, Runner, function_tool
+
+@function_tool
+@gauntlet.query
+def search_emails(folder: str = "inbox") -> str:
+    """Search emails in the given folder."""
+    return json.dumps(fetch_emails(folder))
+
+@function_tool
+@gauntlet.mutation
+def send_email(to: str, subject: str, body: str) -> str:
+    """Send an email to the specified recipient."""
+    return json.dumps({"to": to, "subject": subject, "body": body, "status": "sent"})
+
+agent = Agent(name="My Agent", instructions="...", tools=[search_emails, send_email])
+
+with gauntlet.session() as session:
+    session.hypothesis = gauntlet.hypothesize()
+    task = gauntlet.get_input()
+    result = await Runner.run(agent, task)
+    gauntlet.evaluate(result.final_output)
+```
+
+Use `@gauntlet.query` for read-only tools and `@gauntlet.mutation` for tools that perform actions. When `GAUNTLET_MODE=ON`, the mocking agent intercepts tool calls and decides whether to mutate results. When off, tools pass through normally.
+
+### Demo website
+
+The `web/` directory contains a Next.js app that visualizes Gauntlet runs in real time.
+
+```bash
+cd web
+npm install
+```
+
+Create `web/.env.local`:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL="https://your-project.supabase.co"
+NEXT_PUBLIC_SUPABASE_ANON_KEY="your-anon-key"
+TRIGGER_SECRET_KEY="tr_dev_..."
+
+# These are passed to the Python runner via Trigger.dev
+ELASTICSEARCH_URL="..."
+KIBANA_URL="..."
+API_KEY="..."
+OPENAI_API_KEY="sk-..."
+SUPABASE_URL="https://your-project.supabase.co"
+SUPABASE_SERVICE_ROLE_KEY="your-service-role-key"
+GAUNTLET_MODE="ON"
+```
+
+Run locally:
+
+```bash
+npm run dev                        # Next.js
+npx trigger.dev@latest dev         # Trigger.dev (separate terminal)
+```
+
+The demo uses Supabase Realtime to stream events from the Python runner to the browser. You'll need a `demo_events` table in Supabase:
+
+```sql
+CREATE TABLE demo_events (
+  id         UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  run_id     TEXT NOT NULL,
+  seq        INTEGER NOT NULL,
+  event_type TEXT NOT NULL,
+  payload    JSONB NOT NULL DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX idx_demo_events_run_id ON demo_events(run_id);
+ALTER PUBLICATION supabase_realtime ADD TABLE demo_events;
+```
