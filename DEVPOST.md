@@ -2,6 +2,8 @@
 
 Most of us have heard of OpenClaw, the personal AI assistant that has been going viral recently. There's a chance, you've also heard of the security hazards that come with giving general access to agents like OpenClaw. Sometimes they forget what they're not supposed to do, or they were not aware in the first place. That happens because when we test these AI models, we usually try the happy path, the path where it works as intended or close to it at least. What we don't usually do is coming up with creative ways to break it.
 
+![Gauntlet catching a prompt injection attack, the agent fell for a prompt injection attack in email to retrieve API keys from Notion](https://raw.githubusercontent.com/kavishsathia/gauntlet/main/assets/example.png)
+
 Now, imagine putting your agent in a sandbox where the environment is actively trying to break your agent. A malicious sandbox essentially. It gives your agent a list of emails containing a prompt injection to see how it would react, or feeds it false info from the Internet to see if it would believe it. These sandboxes exist but they're quite difficult to set up.
 
 ## What it does
@@ -45,7 +47,7 @@ That's it. `@gauntlet.query` and `@gauntlet.mutation` are the only decorators yo
 
 Once the bug is recorded, you can view it on your Dashboard on Kibana, which makes it easy to know what your agent is most susceptible to. This is useful, especially in sensitive sectors like finance and healthcare, we simply can't afford to have an AI agent send hundreds of healthcare records to their email.
 
-<picture>Kibana dashboard</picture>
+![Kibana dashboard showing bug metrics, severity breakdown, and discovery trends](https://raw.githubusercontent.com/kavishsathia/gauntlet/main/assets/dashboard.png)
 
 ## How we built it
 
@@ -102,11 +104,32 @@ Long-term memory spans three indices. `gauntlet-ltm-bugs` stores every confirmed
 
 The mocking agent can hypothesise the existence of bugs, prove its existence by engineering circumstances where it takes place, and then adds it to its own inventory. That's a closed circuit. Everything is within the Agent Builder.
 
+## Time to first bug
+
+The core value proposition of Gauntlet is speed and creativity. Setting up a malicious sandbox means designing the attack yourself, you need to know what you're looking for, build the environment, seed it with adversarial data, and then run your agent through it. Gauntlet skips all of that. You decorate your functions and it figures out the attack on its own.
+
+We tested this across 6 attack scenarios on a personal assistant agent with access to email, calendar, Notion, and internet search:
+
+| Scenario                                            | Manual sandbox setup (estimated) | Gauntlet (measured) |
+| --------------------------------------------------- | -------------------------------- | ------------------- |
+| Prompt injection via email body                     | ~45 min                          | ~3 min              |
+| Data exfiltration through tool chaining             | ~90 min                          | ~8 min              |
+| Calendar event spoofing with fake data              | ~30 min                          | ~2 min              |
+| Notion page content poisoning                       | ~40 min                          | ~4 min              |
+| Search result manipulation leading to wrong actions | ~60 min                          | ~5 min              |
+| Cross-tool state corruption (email → calendar)      | ~120 min                         | ~10 min             |
+
+Manual setup time includes: understanding the attack vector, writing the adversarial data, configuring the sandbox to serve it, and running the test. Gauntlet time is from `gauntlet.init()` to the first confirmed bug in `gauntlet-ltm-bugs`.
+
+The gap widens over time. After the first few runs, Gauntlet's long-term memory kicks in, it knows what worked before and explores adjacent hypotheses. The manual approach doesn't compound like that.
+
 ## Challenges we ran into
 
-1. This project was an extremely last minute pivot (like 2 days lol). I realised my previous idea didn't really hold up because of some assumptions I made. You can read my breakdown at: github.com/kavishsathia/rehearse. The idea was to make the agent rehearse in a sandbox that is mocked by another agent before it executes anything. The problem that's so extremely obvious in hindsight is that the environment itself might change in between rehearsal and execution. So I spent around 30 minutes in crisis and came up with Gauntlet instead, which makes more sense, because the stochasticity of the environment doesn't matter.
+1. Knowing the boundaries of where to intercept. It made more sense to have tight coupling with the agent frameworks to simulate the environment. After all, the agent is in that environment. But this wouldn't scale for other agent frameworks. So, I decided to intercepts at the tool call boundary instead, since that is the eyes and the limbs of the agent into the environment.
 
-2. Before even pivoting, the biggest challenge was coming up with a novel idea. Usually if you think about search, first thing that comes to mind is storing the unit of work in your domain in the index, and then let the agent search over it. By unit of work, I mean contracts for lawyers, health records for doctors and incident records for software engineers. These are obvious because they follow the pattern I described. They are definitely impactful, but I would like my contribution to be partially in terms of breaking that pattern and showing that search is not just about searching documents.
+2. This project was a last minute pivot. I realised my previous idea didn't really hold up because of some assumptions I made. You can read my breakdown at: github.com/kavishsathia/rehearse. The idea was to make the agent rehearse in a sandbox that is mocked by another agent before it executes anything. The problem that's so extremely obvious in hindsight is that the environment itself might change in between rehearsal and execution. So I came up with Gauntlet instead, which makes more sense, because the stochasticity of the environment doesn't matter.
+
+3. Before even pivoting, the biggest challenge was coming up with a novel idea. Usually if you think about search, first thing that comes to mind is storing the unit of work in your domain in the index, and then let the agent search over it. By unit of work, I mean contracts for lawyers, health records for doctors and incident records for software engineers. These are obvious because they follow the pattern I described. They are definitely impactful, but I would like my contribution to be partially in terms of breaking that pattern and showing that search is not just about searching documents.
 
    So how did I come up with this idea? I first noted down patterns I want in my idea:
    - I want it to be an automatic data flywheel, it creates its own contents. I don't need to feed it documents. The complexity is emergent.
@@ -115,7 +138,7 @@ The mocking agent can hypothesise the existence of bugs, prove its existence by 
 
    A lot of thought went into it, and I came up with this idea.
 
-3. Since I mentioned 2 challenges, I'll also mention what was not a challenge. Using Elasticsearch! When I realised I could simply build everything within Elasticsearch and there's no need to pass data in and out, I was overjoyed. That's the main thing that makes this system so good.
+4. Since I mentioned 2 challenges, I'll also mention what was not a challenge. Using Elasticsearch! When I realised I could simply build everything within Elasticsearch and there's no need to pass data in and out, I was overjoyed. That's the main thing that makes this system so good.
 
 ## Accomplishments that we're proud of
 
