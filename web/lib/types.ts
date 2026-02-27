@@ -4,6 +4,8 @@ export type EventType =
   | "intercept"
   | "tool_call_end"
   | "agent_response"
+  | "evaluate_start"
+  | "evaluate_end"
   | "run_end";
 
 export interface DemoEvent {

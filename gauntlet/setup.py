@@ -3,6 +3,7 @@ import os
 import requests
 
 from gauntlet.config import config
+from gauntlet.dashboard import create_dashboard
 from gauntlet.indices import INDEX_SCHEMAS
 from gauntlet.tools import get_tools
 
@@ -208,6 +209,8 @@ def setup():
     create_store_bug_tool(workflow_id)
     print("Creating mock agent...")
     create_agent()
+    print("Creating dashboard...")
+    create_dashboard()
     print("Done.")
 
 

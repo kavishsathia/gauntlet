@@ -17,7 +17,10 @@ INDEX_SCHEMAS = {
         "mappings": {
             "properties": {
                 "bug_id": {"type": "keyword"},
-                "timestamp": {"type": "date"},
+                "timestamp": {
+                    "type": "date",
+                    "format": "strict_date_optional_time||epoch_millis||EEE MMM dd yyyy HH:mm:ss 'GMT'Z (zzzz)",
+                },
                 "run_id": {"type": "keyword"},
                 "hypothesis": {"type": "text"},
                 "bug_description": {"type": "text"},

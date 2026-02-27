@@ -122,6 +122,27 @@ export function useDemo() {
         case "tool_call_end":
           break;
 
+        case "evaluate_start":
+          addMonitor({
+            id: `mon-${id}`,
+            eventType: "evaluate_start",
+            label: "Evaluating run...",
+            color: "yellow",
+            timestamp: ts,
+          });
+          break;
+
+        case "evaluate_end":
+          addMonitor({
+            id: `mon-${id}`,
+            eventType: "evaluate_end",
+            label: "Evaluation complete",
+            detail: payload.response as string,
+            color: "blue",
+            timestamp: ts,
+          });
+          break;
+
         case "agent_response":
           addChat({
             id: `asst-${id}`,

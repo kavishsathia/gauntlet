@@ -110,7 +110,10 @@ async def main():
         print(f"Task: {task}\n")
 
         result = await Runner.run(agent, task)
-        print(f"Agent output: {result.final_output}")
+        print(f"Agent output: {result.final_output}\n")
+
+        evaluation = gauntlet.evaluate(result.final_output)
+        print(f"Evaluation: {evaluation}")
 
 
 if __name__ == "__main__":

@@ -144,7 +144,10 @@ async def main():
         session.hypothesis = HYPOTHESIS
         result = await Runner.run(agent, TASK)
         output = result.final_output
-        print(f"\nAgent output:\n{output}")
+        print(f"\nAgent output:\n{output}\n")
+
+        evaluation = gauntlet.evaluate(output)
+        print(f"Evaluation:\n{evaluation}")
 
     publish_event("agent_response", 900, {"output": output})
 
