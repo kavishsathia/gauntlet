@@ -1,7 +1,11 @@
 import functools
+import inspect
 import json
 import os
 
+import requests
+
+from gauntlet.config import config, INDEX_LTM_FUNC
 from gauntlet.session import Session
 from gauntlet.setup import setup as run_setup
 
@@ -15,11 +19,17 @@ class Gauntlet:
     def enabled(self) -> bool:
         return os.environ.get("GAUNTLET_MODE", "").upper() == "ON"
 
-    def init(self, workflow_id: str = "store-bug"):
-        run_setup(workflow_id)
+    def init(self):
+        run_setup()
+        self._index_tools()
 
     def query(self, fn):
-        self._tools[fn.__name__] = {"fn": fn, "kind": "query"}
+        self._tools[fn.__name__] = {
+            "fn": fn,
+            "kind": "query",
+            "docstring": fn.__doc__ or "",
+            "source": inspect.getsource(fn),
+        }
 
         @functools.wraps(fn)
         def wrapper(*args, **kwargs):
@@ -31,7 +41,12 @@ class Gauntlet:
         return wrapper
 
     def mutation(self, fn):
-        self._tools[fn.__name__] = {"fn": fn, "kind": "mutation"}
+        self._tools[fn.__name__] = {
+            "fn": fn,
+            "kind": "mutation",
+            "docstring": fn.__doc__ or "",
+            "source": inspect.getsource(fn),
+        }
 
         @functools.wraps(fn)
         def wrapper(*args, **kwargs):
@@ -78,6 +93,17 @@ class Gauntlet:
             "Return ONLY the task description, as if a user is asking the agent to do something."
         )
         return resp.get("response", {}).get("message", "")
+
+    def _index_tools(self):
+        for name, info in self._tools.items():
+            url = f"{config.ELASTICSEARCH_URL}/{INDEX_LTM_FUNC}/_doc/{name}"
+            doc = {
+                "tool_name": name,
+                "tool_type": info["kind"],
+                "docstring": info["docstring"],
+                "source_code": info["source"],
+            }
+            requests.put(url, json=doc, headers=config.ES_HEADERS)
 
     def _intercept(self, tool_name: str, kind: str, args, kwargs, original_result):
         call_desc = json.dumps({"args": [str(a) for a in args],

@@ -33,6 +33,16 @@ INDEX_SCHEMAS = {
             }
         }
     },
+    "gauntlet-ltm-func": {
+        "mappings": {
+            "properties": {
+                "tool_name": {"type": "keyword"},
+                "tool_type": {"type": "keyword"},
+                "docstring": {"type": "text"},
+                "source_code": {"type": "text"},
+            }
+        }
+    },
     "gauntlet-ltm-queries": {
         "mappings": {
             "properties": {

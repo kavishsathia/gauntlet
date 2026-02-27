@@ -3,13 +3,7 @@ from datetime import datetime, timezone
 
 import requests
 
-from gauntlet.config import (
-    ELASTICSEARCH_URL,
-    ES_HEADERS,
-    INDEX_STM,
-    KIBANA_HEADERS,
-    KIBANA_URL,
-)
+from gauntlet.config import config, INDEX_STM
 
 
 class Session:
@@ -21,14 +15,14 @@ class Session:
         self.hypothesis_embedding = None
 
     def converse(self, message: str) -> dict:
-        url = f"{KIBANA_URL}/api/agent_builder/converse"
+        url = f"{config.KIBANA_URL}/api/agent_builder/converse"
         body = {
             "input": message,
             "agent_id": self.agent_id,
         }
         if self.conversation_id:
             body["conversation_id"] = self.conversation_id
-        resp = requests.post(url, json=body, headers=KIBANA_HEADERS)
+        resp = requests.post(url, json=body, headers=config.KIBANA_HEADERS)
         resp.raise_for_status()
         data = resp.json()
         self.conversation_id = data.get("conversation_id")
@@ -46,8 +40,8 @@ class Session:
             "mutation_description": mutation_description,
             "hypothesis_id": self.hypothesis or "",
         }
-        url = f"{ELASTICSEARCH_URL}/{INDEX_STM}/_doc"
-        resp = requests.post(url, json=doc, headers=ES_HEADERS)
+        url = f"{config.ELASTICSEARCH_URL}/{INDEX_STM}/_doc"
+        resp = requests.post(url, json=doc, headers=config.ES_HEADERS)
         resp.raise_for_status()
 
     def store_query_result(self, tool_name: str, query_description: str,
@@ -64,6 +58,6 @@ class Session:
             "was_mutated": was_mutated,
             "mutation_applied": mutation_applied,
         }
-        url = f"{ELASTICSEARCH_URL}/gauntlet-ltm-queries/_doc"
-        resp = requests.post(url, json=doc, headers=ES_HEADERS)
+        url = f"{config.ELASTICSEARCH_URL}/gauntlet-ltm-queries/_doc"
+        resp = requests.post(url, json=doc, headers=config.ES_HEADERS)
         resp.raise_for_status()
