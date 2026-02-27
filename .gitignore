@@ -3,3 +3,8 @@ __pycache__/
 *.pyc
 .venv/
 *.egg-info/
+
+# Node
+node_modules/
+.next/
+.env.local
