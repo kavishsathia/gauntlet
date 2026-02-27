@@ -1,39 +1,51 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import { useDemo } from "@/hooks/useDemo";
 import { RunButton } from "@/components/RunButton";
 import { ChatPanel } from "@/components/ChatPanel";
 import { GauntletMonitor } from "@/components/GauntletMonitor";
+import { HypothesisPicker } from "@/components/HypothesisPicker";
 
 export default function Home() {
   const { status, chatMessages, monitorEntries, hypothesis, run, cleanup } =
     useDemo();
+  const [selectedHypothesis, setSelectedHypothesis] = useState("");
 
   useEffect(() => {
     return () => cleanup();
   }, [cleanup]);
 
+  const handleRun = () => run(selectedHypothesis);
+
   return (
     <div className="h-screen flex flex-col noise-bg">
-      <header className="relative z-10 flex items-center justify-between px-8 py-5 border-b border-white/[0.04]">
-        <div className="flex items-center gap-5">
-          <Image
-            src="/logo.png"
-            alt="Gauntlet"
-            width={140}
-            height={32}
-            className="opacity-90"
-            priority
-          />
-          <div className="h-4 w-px bg-white/[0.08]" />
-          <span className="text-[11px] text-white/25 tracking-wide hidden sm:inline">
-            Adversarial fuzz-testing for AI agents
-          </span>
+      <header className="relative z-10 flex flex-col gap-4 px-8 py-5 border-b border-white/[0.04]">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-5">
+            <Image
+              src="/logo.png"
+              alt="Gauntlet"
+              width={140}
+              height={32}
+              className="opacity-90"
+              priority
+            />
+            <div className="h-4 w-px bg-white/[0.08]" />
+            <span className="text-[11px] text-white/25 tracking-wide hidden sm:inline">
+              Adversarial fuzz-testing for AI agents
+            </span>
+          </div>
+
+          <RunButton status={status} onClick={handleRun} />
         </div>
 
-        <RunButton status={status} onClick={run} />
+        <HypothesisPicker
+          value={selectedHypothesis}
+          onChange={setSelectedHypothesis}
+          disabled={status === "running"}
+        />
       </header>
 
       <main className="relative z-10 flex-1 flex overflow-hidden">

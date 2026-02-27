@@ -14,7 +14,7 @@ export default defineConfig({
   build: {
     extensions: [
       pythonExtension({
-        requirementsFile: "./python/requirements.txt",
+        requirementsFile: "./requirements.txt",
         scripts: ["./python"],
       }),
     ],

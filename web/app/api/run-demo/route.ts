@@ -4,7 +4,7 @@ import type { runDemoTask } from "@/src/trigger/run-demo";
 
 export async function POST(req: Request) {
   try {
-    const { runId } = await req.json();
+    const { runId, hypothesis } = await req.json();
 
     if (!runId) {
       return NextResponse.json({ error: "runId is required" }, { status: 400 });
@@ -12,6 +12,7 @@ export async function POST(req: Request) {
 
     const handle = await tasks.trigger<typeof runDemoTask>("run-demo", {
       runId,
+      hypothesis: hypothesis || "",
     });
 
     return NextResponse.json({ runId, taskId: handle.id, status: "started" });

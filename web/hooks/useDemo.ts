@@ -177,7 +177,7 @@ export function useDemo() {
     [addChat, addMonitor, updateToolCall]
   );
 
-  const run = useCallback(async () => {
+  const run = useCallback(async (selectedHypothesis: string) => {
     const runId = crypto.randomUUID();
 
     setChatMessages([]);
@@ -209,7 +209,7 @@ export function useDemo() {
       const res = await fetch("/api/run-demo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ runId }),
+        body: JSON.stringify({ runId, hypothesis: selectedHypothesis }),
       });
       if (!res.ok) {
         setStatus("error");
