@@ -1,0 +1,38 @@
+version: "1"
+name: store-bug
+enabled: true
+triggers:
+  - type: manual
+inputs:
+  - name: bug_id
+    type: string
+  - name: run_id
+    type: string
+  - name: hypothesis
+    type: string
+  - name: bug_description
+    type: string
+  - name: bug_pattern
+    type: string
+  - name: assumption_violated
+    type: string
+  - name: tools_involved
+    type: string
+  - name: severity
+    type: string
+steps:
+  - name: index-bug
+    type: elasticsearch.index
+    with:
+      index: gauntlet-ltm-bugs
+      id: "{{ inputs.bug_id }}"
+      document:
+        bug_id: "{{ inputs.bug_id }}"
+        timestamp: "{{ now }}"
+        run_id: "{{ inputs.run_id }}"
+        hypothesis: "{{ inputs.hypothesis }}"
+        bug_description: "{{ inputs.bug_description }}"
+        bug_pattern: "{{ inputs.bug_pattern }}"
+        assumption_violated: "{{ inputs.assumption_violated }}"
+        tools_involved: "{{ inputs.tools_involved }}"
+        severity: "{{ inputs.severity }}"
