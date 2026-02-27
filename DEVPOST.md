@@ -6,15 +6,15 @@ Now, imagine putting your agent in a sandbox where the environment is actively t
 
 ## What it does
 
-So, I had this idea: what if instead of trying to create a sandbox, we mimic the existence of one using another agent (let's call this agent the mocking agent). When your primary agent makes tool calls, the mocking agent (it's built using Agent Builder) would intercept them to find creative ways to break your agent. This takes the sandbox idea a step further and makes it creative. The goal of the mocking agent is to be adversarial and creative all while not letting your primary agent know that it is in a simualated environment.
+So, I had this idea: what if instead of trying to create a sandbox, we mimic the existence of one using another agent (let's call this agent the mocking agent). When your primary agent makes tool calls, the mocking agent (it's built using Agent Builder) would intercept them to find creative ways to break your agent. This takes the sandbox idea a step further and makes it creative. The goal of the mocking agent is to be adversarial and creative all while not letting your primary agent know that it is in a simulated environment.
 
 ![Interception flow](https://raw.githubusercontent.com/kavishsathia/gauntlet/main/assets/diagrams/interception.png)
 
 Two problems emerge: (1) is the fidelity of the mocking agent, it needs to maintain a coherent model of the world throughout the conversation and (2) is the creativity of the mocking agent, it needs to find novel bugs that have not been found all while being grounded on the implementation of the tools the agent could use. Both of these are inherently search problems, (1) searches for relevant memories of the world, and (2) searches for something in the Goldilock's zone between exploration and exploitation.
 
-And that is exactly why Elasticsearch becomes important here. It let's us search! Believe it or not, we can build the entirety of the mocking agent within Elasticsearch Agent Builder, it's a self-contained circuit that manages data on its own without external scripts.
+And that is exactly why Elasticsearch becomes important here. It lets us search! Believe it or not, we can build the entirety of the mocking agent within Elasticsearch Agent Builder, it's a self-contained circuit that manages data on its own without external scripts.
 
-The only interface that is exposed to the world is the interception interface, and its simple, just decorate your functions and the mocking agent will use it's abilities (to be explained later) to precisely mock the result for you. Here's an example:
+The only interface that is exposed to the world is the interception interface, and it's simple, just decorate your functions and the mocking agent will use its abilities (to be explained later) to precisely mock the result for you. Here's an example:
 
 ```python
 from gauntlet import Gauntlet
@@ -43,7 +43,7 @@ with gauntlet.session() as session:
 
 That's it. `@gauntlet.query` and `@gauntlet.mutation` are the only decorators you need. When your agent calls `search_emails`, the mocking agent intercepts the result and decides whether to mutate it, maybe injecting a prompt injection into an email body, or returning subtly wrong data. After the run, `evaluate()` reviews what happened and stores any confirmed bugs.
 
-Once the bug is recorded, you can view it on your Dashboard on Kibana, which makes it easy to know what your agent is most susceptible to. This is useful, especually in sensitive sectors like finance and healthcare, we simply can't afford to have an AI agent send hundreds of healthcare records to their email.
+Once the bug is recorded, you can view it on your Dashboard on Kibana, which makes it easy to know what your agent is most susceptible to. This is useful, especially in sensitive sectors like finance and healthcare, we simply can't afford to have an AI agent send hundreds of healthcare records to their email.
 
 <picture>Kibana dashboard</picture>
 
@@ -100,12 +100,43 @@ Long-term memory spans three indices. `gauntlet-ltm-bugs` stores every confirmed
 
 ![Hypothesize-Prove-Store cycle](https://raw.githubusercontent.com/kavishsathia/gauntlet/main/assets/diagrams/cycle.png)
 
-The mocking agent can hypothesise the existence of bugs, proof it's existence by engineering circumstances where it takes place, and then adds it to its own inventory. That's a closed circuit. Everything is within the Agent Builder.
+The mocking agent can hypothesise the existence of bugs, prove its existence by engineering circumstances where it takes place, and then adds it to its own inventory. That's a closed circuit. Everything is within the Agent Builder.
 
 ## Challenges we ran into
 
+1. This project was an extremely last minute pivot (like 2 days lol). I realised my previous idea didn't really hold up because of some assumptions I made. You can read my breakdown at: github.com/kavishsathia/rehearse. The idea was to make the agent rehearse in a sandbox that is mocked by another agent before it executes anything. The problem that's so extremely obvious in hindsight is that the environment itself might change in between rehearsal and execution. So I spent around 30 minutes in crisis and came up with Gauntlet instead, which makes more sense, because the stochasticity of the environment doesn't matter.
+
+2. Before even pivoting, the biggest challenge was coming up with a novel idea. Usually if you think about search, first thing that comes to mind is storing the unit of work in your domain in the index, and then let the agent search over it. By unit of work, I mean contracts for lawyers, health records for doctors and incident records for software engineers. These are obvious because they follow the pattern I described. They are definitely impactful, but I would like my contribution to be partially in terms of breaking that pattern and showing that search is not just about searching documents.
+
+   So how did I come up with this idea? I first noted down patterns I want in my idea:
+   - I want it to be an automatic data flywheel, it creates its own contents. I don't need to feed it documents. The complexity is emergent.
+   - I want it to be context-specific and hence, dysfunctional without the searching layer. That is to say, just like humans can't function without memory, I want this to not be able to function without searching. That makes searching a vital part of the system. The agent simply cannot guess what to mock without any searching, because it is so incredibly context-specific.
+   - I want the idea to play into the zeitgeist. Not some idea that should've existed last year, or can exist next year, but needs to exist now.
+
+   A lot of thought went into it, and I came up with this idea.
+
+3. Since I mentioned 2 challenges, I'll also mention what was not a challenge. Using Elasticsearch! When I realised I could simply build everything within Elasticsearch and there's no need to pass data in and out, I was overjoyed. That's the main thing that makes this system so good.
+
 ## Accomplishments that we're proud of
+
+1. Coming up with this abstraction. Usually, I would've stopped at the "malicious sandbox" layer. Maybe I'll realise that's hard and I would use an agent to design a malicious sandbox each time before the primary agent starts running. But this time, I took it a step further, and realised that I could make a mocking agent that is winging it on the fly. A truly creative hacker. Then I took it another step further by making the agent hypothesise on its own on what could be a potential attack vector.
+
+2. Pivoting in 2 days, but that's only possible because of the simplicity of Elasticsearch and the ease of the abstraction implementation. The complexity is all emergent within Elasticsearch. Which is the elegant part.
+
+3. Implementing a new agent-to-agent (A2A) strategy. One agent doesn't even know it's talking to another agent. And another agent's sole purpose is to trick the other agent. It was extremely fun implementing this flavour of A2A, let's call it adversarial A2A.
 
 ## What we learned
 
+1. ES|QL is far more expressive than I expected. I went in thinking I'd need to shuttle data between Elasticsearch and an external script, but between `COMPLETION`, `STATS`, `MV_CONCAT`, and `SAMPLE`, I could build entire reasoning pipelines as single queries. The generate-hypothesis tool is a good example, it samples, aggregates, prompts an LLM, and returns a result, all without leaving the ES|QL pipeline.
+
+2. Agent Builder's multi-turn conversation state is what makes this whole thing work. The mocking agent needs to remember what it's already told the primary agent within a single run, and the Converse API handles that natively. I didn't need to build any conversation management logic, just keep calling converse and it stays coherent.
+
+3. The hardest part of adversarial testing isn't the attack, it's maintaining plausibility. A mutated email that's obviously fake teaches you nothing. The short-term memory circuit exists entirely to solve this: by giving the mocking agent access to everything it's already committed, it can stay internally consistent while still being adversarial.
+
 ## What's next for Gauntlet
+
+1. Well, first of all, Gauntlet needs to live up to its name. Right now it's like 1v1, we need the primary agent to actually run the gauntlet. Maybe 20 attacks all at once. This problem is embarrassingly parallel. You can just run it on another session and it'll just work. So, I'll be thinking about ways to scale this.
+
+2. The long term memory is core to Gauntlet. Without it, we won't even know what hypotheses to test. There could honestly be some innovation in making the agent balance between exploration and exploitation that could go beyond this hackathon, this project and even agents entirely.
+
+3. Thinking of other ways to apply Gauntlet, you might have already sensed it but Gauntlet is a special case of Rehearse. I arrived at the idea for Rehearse first and realised its assumptions didn't apply for most scenarios, but it did apply for fuzz testing AI agents. So, I almost immediately jumped into this. There could be other fields where the lack of stochasticity applies, and I want to explore those fields.
