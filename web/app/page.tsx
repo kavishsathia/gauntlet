@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import Image from "next/image";
 import { useDemo } from "@/hooks/useDemo";
 import { RunButton } from "@/components/RunButton";
 import { ChatPanel } from "@/components/ChatPanel";
@@ -16,13 +17,18 @@ export default function Home() {
 
   return (
     <div className="h-screen flex flex-col noise-bg">
-      {/* Header */}
-      <header className="relative z-10 flex items-center justify-between px-6 py-4 border-b border-white/[0.06]">
-        <div className="flex items-center gap-4">
-          <h1 className="text-xl font-bold tracking-tight">
-            <span className="text-red-500">Gauntlet</span>
-          </h1>
-          <span className="text-xs text-white/30 hidden sm:inline">
+      <header className="relative z-10 flex items-center justify-between px-8 py-5 border-b border-white/[0.04]">
+        <div className="flex items-center gap-5">
+          <Image
+            src="/logo.png"
+            alt="Gauntlet"
+            width={140}
+            height={32}
+            className="opacity-90"
+            priority
+          />
+          <div className="h-4 w-px bg-white/[0.08]" />
+          <span className="text-[11px] text-white/25 tracking-wide hidden sm:inline">
             Adversarial fuzz-testing for AI agents
           </span>
         </div>
@@ -30,41 +36,37 @@ export default function Home() {
         <RunButton status={status} onClick={run} />
       </header>
 
-      {/* Main content */}
       <main className="relative z-10 flex-1 flex overflow-hidden">
-        {/* Chat panel — left 60% */}
-        <div className="w-[60%] border-r border-white/[0.06] bg-white/[0.01]">
+        <div className="w-[58%] border-r border-white/[0.04]">
           <ChatPanel messages={chatMessages} />
         </div>
 
-        {/* Gauntlet monitor — right 40% */}
-        <div className="w-[40%] bg-black/20">
+        <div className="w-[42%]">
           <GauntletMonitor entries={monitorEntries} hypothesis={hypothesis} />
         </div>
       </main>
 
-      {/* Status bar */}
-      <footer className="relative z-10 px-6 py-2 border-t border-white/[0.06] flex items-center justify-between">
+      <footer className="relative z-10 px-8 py-2.5 border-t border-white/[0.04] flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div
-            className={`w-1.5 h-1.5 rounded-full ${
+            className={`w-1.5 h-1.5 rounded-full transition-colors duration-500 ${
               status === "idle"
-                ? "bg-white/20"
+                ? "bg-white/15"
                 : status === "running"
-                ? "bg-yellow-500 animate-pulse"
+                ? "bg-amber-400/80 animate-pulse"
                 : status === "completed"
-                ? "bg-emerald-500"
-                : "bg-red-500"
+                ? "bg-emerald-400/80"
+                : "bg-red-400/80"
             }`}
           />
-          <span className="text-[11px] text-white/30">
+          <span className="text-[11px] text-white/25 tracking-wide">
             {status === "idle" && "Ready"}
             {status === "running" && "Agent under test..."}
             {status === "completed" && "Run complete"}
             {status === "error" && "Error occurred"}
           </span>
         </div>
-        <span className="text-[11px] text-white/20">
+        <span className="text-[11px] text-white/15 tracking-wide">
           Powered by Elasticsearch Agent Builder
         </span>
       </footer>

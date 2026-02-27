@@ -15,22 +15,19 @@ export function RunButton({ status, onClick }: RunButtonProps) {
       onClick={onClick}
       disabled={isRunning}
       className={`
-        relative px-8 py-3 rounded-lg font-semibold text-sm tracking-wide uppercase
+        relative px-6 py-2.5 rounded-md text-[12px] font-medium tracking-[0.08em] uppercase
         transition-all duration-300 cursor-pointer
         ${
           isRunning
-            ? "bg-red-500/20 text-red-400 border border-red-500/30"
-            : "bg-red-600 text-white hover:bg-red-500 hover:shadow-lg hover:shadow-red-500/25 active:scale-95"
+            ? "bg-white/5 text-white/40 border border-white/[0.06]"
+            : "bg-white/[0.08] text-white/70 border border-white/[0.08] hover:bg-white/[0.12] hover:text-white/90 active:scale-[0.98]"
         }
         disabled:cursor-not-allowed
       `}
     >
-      {isRunning && (
-        <span className="absolute inset-0 rounded-lg animate-pulse bg-red-500/10" />
-      )}
       <span className="relative flex items-center gap-2">
         {isRunning && (
-          <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+          <svg className="animate-spin h-3.5 w-3.5 text-white/30" viewBox="0 0 24 24">
             <circle
               className="opacity-25"
               cx="12"
